@@ -1,0 +1,1 @@
+﻿Set-DnsClientGlobalSetting -SuffixSearchList @("metlife.com","metnet.net","resources.metnet.net","alicorp.corp","ussales.net")

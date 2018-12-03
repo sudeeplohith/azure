@@ -1,0 +1,30 @@
+Build Ticket         : SNOW RITM0752797
+Application          : QRM
+Environment          : DEV
+Location             : Azure East
+Database Host(s)     : iazedvdb0001	
+Instance Name        : SQL_10948_001
+Instance Description : EAI 10948 QRM
+
+METNET DOMAIN SQL Service Account Owner : METNET\AT1094802
+Database Package Version     : 2016_SP1_DEVELOPER
+Cumulative update Version    : CU8
+Fixed Memory Allocation (MB) : 6554
+SQL Binary Install Location  : B
+SysDB & userDB               : F
+T-Logs                       : G
+TempDB			     : H
+OLAP                         : Not Available or Required
+
+
+Metlife Friendly DNS Alias for FE Listener : DEVAZ.MAPSQRMDWSQL.METLIFE.COM
+
+Guest OS private IP/MASK/GTW : 10.12.196.32/255.255.254.0/10.12.196.1
+Database Listener IP/MASK    : 10.12.197.248/255.255.254.0
+Database Listener Port       : 55300
+
+Location of all in-scope SQL Packages to install : B:\software\SQL2016
+Additional SQL Packages to Install....
+	SSIS : No
+	SSRS : No
+	SSAS : No

@@ -1,0 +1,2 @@
+﻿Get-AzureADUser -ObjectId "dbalsam@genon.com" | select DisplayName,UserPrincipalName,otherMails,Mobile,TelephoneNumber | Format-Table
+Get-AzureADUser -ObjectId "william.arias-ramirez@GenOn.onmicrosoft.com" | select DisplayName,UserPrincipalName,otherMails,Mobile,TelephoneNumber | Format-Table

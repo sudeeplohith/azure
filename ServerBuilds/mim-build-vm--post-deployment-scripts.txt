@@ -1,0 +1,96 @@
+
+1. Create New Managed Disks
+az disk create -g mim-usnc-prod-10948-rg -n iazncpvdb0001-dataDisk1 --size-gb 1024 --sku Premium_LRS --tags Project=10948 --no-wait
+az disk create -g mim-usnc-prod-10948-rg -n iazncpvdb0001-dataDisk2 --size-gb 512 --sku Premium_LRS --tags Project=10948 --no-wait
+az disk create -g mim-usnc-prod-10948-rg -n iazncpvdb0001-dataDisk3 --size-gb 512 --sku Premium_LRS --tags Project=10948 --no-wait
+az disk create -g mim-usnc-prod-10948-rg -n iazncpvdb0001-dataDisk4 --size-gb 512 --sku Premium_LRS --tags Project=10948 --no-wait
+
+2. Associate New Managed Disks with VM
+az vm disk attach -g mim-usnc-prod-10948-rg --vm-name iazncpvdb0001 --disk iazncpvdb0001-dataDisk1 --new
+az vm disk attach -g mim-usnc-prod-10948-rg --vm-name iazncpvdb0001 --disk iazncpvdb0001-dataDisk2 --new
+az vm disk attach -g mim-usnc-prod-10948-rg --vm-name iazncpvdb0001 --disk iazncpvdb0001-dataDisk3 --new
+az vm disk attach -g mim-usnc-prod-10948-rg --vm-name iazncpvdb0001 --disk iazncpvdb0001-dataDisk4 --new
+az vm disk attach -g mim-usnc-prod-10948-rg --vm-name iazncpvdb0001 --disk iazncpvdb0001-dataDisk5 --new
+
+3. Format Disks and Mount Disks as File Systems (B drive, F through I drives)
+
+$Disk = Get-Disk -Number 2
+Set-Disk -InputObject $Disk -IsOffline $false
+Initialize-Disk -InputObject $Disk
+New-Partition $Disk.Number -UseMaximumSize -DriveLetter B
+Format-Volume -DriveLetter B -FileSystem NTFS -AllocationUnitSize 65536 -NewFileSystemLabel Binaries -Confirm:$true
+
+$Disk = Get-Disk -Number 3
+Set-Disk -InputObject $Disk -IsOffline $false
+Initialize-Disk -InputObject $Disk
+New-Partition $Disk.Number -UseMaximumSize -DriveLetter F
+Format-Volume -DriveLetter F -FileSystem NTFS -AllocationUnitSize 65536 -NewFileSystemLabel Data -Confirm:$false
+
+$Disk = Get-Disk -Number 4
+Set-Disk -InputObject $Disk -IsOffline $false
+Initialize-Disk -InputObject $Disk
+New-Partition $Disk.Number -UseMaximumSize -DriveLetter G
+Format-Volume -DriveLetter G -FileSystem NTFS -AllocationUnitSize 65536 -NewFileSystemLabel Logs -Confirm:$false
+
+$Disk = Get-Disk -Number 5
+Set-Disk -InputObject $Disk -IsOffline $false
+Initialize-Disk -InputObject $Disk
+New-Partition $Disk.Number -UseMaximumSize -DriveLetter H
+Format-Volume -DriveLetter H -FileSystem NTFS -AllocationUnitSize 65536 -NewFileSystemLabel Temp -Confirm:$false
+
+$Disk = Get-Disk -Number 6
+Set-Disk -InputObject $Disk -IsOffline $false
+Initialize-Disk -InputObject $Disk
+New-Partition $Disk.Number -UseMaximumSize -DriveLetter I
+Format-Volume -DriveLetter I -FileSystem NTFS -AllocationUnitSize 65536 -NewFileSystemLabel OLAP -Confirm:$false
+
+
+get-wmiobject win32_volume | ?{ $_.DriveType -eq 3 } | ForEach-Object { get-psdrive $_.DriveLetter[0] }
+Get-LocalGroupMember -name Administrators
+
+4. Add Domain Groups to Local Admins, Power Users, Remote Desktop Users Groups
+
+Add-LocalGroupMember -name Administrators -member "INV_MET_ARCH_APP8251_CH"
+Add-LocalGroupMember -name "Power Users" -member "INV_MET_ARCH_APP8251_CH"
+Add-LocalGroupMember -name "Remote Desktop Users" -member "INV_MET_ARCH_APP8251_CH
+
+Get-LocalGroupMember -name Administrators
+Get-LocalGroupMember -name "Power Users"
+Get-LocalGroupMember -name "Remote Desktop Users"
+
+5. Create secondary IPs from Cloud Shell
+
+az network nic ip-config create -g mim-usnc-prod-10948-rg --nic-name iazncpvdb0001-vNic --private-ip-address-version IPv4 --private-ip-address 10.12.143.254 --name PRDAZ.QRMSQL.METLIFE.COM
+
+6. Add Secondary IP to OS : Edit and Paste into RunPowerShellCommand
+
+$PIP = "<Primary IP>"   #Add Primary IP of Server e.g. 10.12.172.0/22 or 10.12.160.0/24
+$SIP = "<Secondary IP>" #ADD Secondary IP of Server
+$MaskBits = 22 # ADD Netmask of SUBNET on which the server resides : Usually 255.255.252.0 (22) or 255.255.255.0(24) or 255.255.254.0 (23)
+$Gateway = "<Gateway IP of Primary IP>" #Add Gateway IP of Subnet on which server sits. E.G. 10.12.172.1 or 10.12.160.1
+#####DO NOT CHANGE THE REST OF THIS SCRIPT#####
+$Dns = "10.9.167.218"
+$IPType = "IPv4"
+# Retrieve the network adapter that you want to configure
+$adapter = Get-NetAdapter | ? {$_.Status -eq "up"}
+# Remove any existing IP, gateway from our ipv4 adapter
+If (($adapter | Get-NetIPConfiguration).IPv4Address.IPAddress) {
+ $adapter | Remove-NetIPAddress -AddressFamily $IPType -Confirm:$false
+}
+If (($adapter | Get-NetIPConfiguration).Ipv4DefaultGateway) {
+ $adapter | Remove-NetRoute -AddressFamily $IPType -Confirm:$false
+}
+ # Configure the Primary IP address and default gateway
+$adapter | New-NetIPAddress `
+ -AddressFamily $IPType `
+ -IPAddress $PIP `
+ -PrefixLength $MaskBits `
+ -DefaultGateway $Gateway
+Start-Sleep -s 15
+ipconfig /registerdns
+nslookup $env:computername
+$adapter | Set-DnsClientServerAddress -ServerAddresses {10.9.167.218,10.9.167.161,10.10.61.71}  # Add additional DNS Servers to existing resolver list
+$adapter | New-NetIPAddress -IPAddress $SIP -AddressFamily IPv4 -PrefixLength $MaskBits -SkipAsSource $True
+Get-NetIPAddress -AddressFamily IPv4
+
+

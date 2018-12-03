@@ -1,0 +1,32 @@
+$PIP = "10.12.140.6"
+$SIP = "10.12.143.251"
+$MaskBits = 22 # This means subnet mask = 255.255.252.0
+$Gateway = "10.12.140.1"
+$Dns = "10.9.167.218"
+$IPType = "IPv4"
+# Retrieve the network adapter that you want to configure
+$adapter = Get-NetAdapter | ? {$_.Status -eq "up"}
+# Remove any existing IP, gateway from our ipv4 adapter
+If (($adapter | Get-NetIPConfiguration).IPv4Address.IPAddress) {
+ $adapter | Remove-NetIPAddress -AddressFamily $IPType -Confirm:$false
+}
+If (($adapter | Get-NetIPConfiguration).Ipv4DefaultGateway) {
+ $adapter | Remove-NetRoute -AddressFamily $IPType -Confirm:$false
+}
+ # Configure the Primary IP address and default gateway
+$adapter | New-NetIPAddress `
+ -AddressFamily $IPType `
+ -IPAddress $PIP `
+ -PrefixLength $MaskBits `
+ -DefaultGateway $Gateway
+# Configure the DNS client server IP addresses
+$adapter | Set-DnsClientServerAddress -ServerAddresses $DNS
+Start-Sleep -s 15
+ipconfig /registerdns
+nslookup $env:computername
+$adapter | Set-DnsClientServerAddress -ServerAddresses {10.10.61.71,10.9.167.161}  # Add additional DNS Servers to existing resolver list
+$adapter | New-NetIPAddress -IPAddress $SIP -AddressFamily IPv4 -PrefixLength $MaskBits -SkipAsSource $True
+Get-NetIPAddress -AddressFamily IPv4
+
+
+
